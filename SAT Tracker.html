@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SAT Tracker</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--tx:#1d2433;--mu:#6b7385;--bd:#e3e6ee;--pr:#4f46e5;--ok:#16a34a;--no:#dc2626;--wa:#f59e0b;--soft:#eef0ff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10131c;--card:#1a1f2d;--tx:#e8eaf2;--mu:#98a0b5;--bd:#2b3245;--pr:#8b85ff;--soft:#262a45;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10131c;--card:#1a1f2d;--tx:#e8eaf2;--mu:#98a0b5;--bd:#2b3245;--pr:#8b85ff;--soft:#262a45;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:16px 16px 0;max-width:1000px;margin:auto}
+h1{margin:0 0 10px;font-size:22px}h2{font-size:16px;margin:0 0 10px}
+nav{display:flex;gap:6px;overflow-x:auto;padding:4px 0 10px}
+nav button{white-space:nowrap;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:20px;cursor:pointer;font:inherit}
+nav button.on{background:var(--pr);color:#fff;border-color:var(--pr)}
+main{max-width:1000px;margin:auto;padding:0 16px 40px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:14px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.stats{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}
+.stat b{display:block;font-size:22px}.stat span{color:var(--mu);font-size:12px}
+input,select,textarea{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px;width:100%}
+textarea{min-height:64px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}.row>*{flex:1;min-width:110px}
+.btn{background:var(--pr);color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;font:inherit}
+.btn.g{background:var(--soft);color:var(--pr)}.x{background:none;border:0;color:var(--no);cursor:pointer;font-size:16px}
+.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--bd)}th{color:var(--mu);font-weight:500}
+.mu{color:var(--mu);font-size:13px}.ok{color:var(--ok)}.no{color:var(--no)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal .h{font-size:12px;color:var(--mu)}
+.cal button{aspect-ratio:1;border:1px solid var(--bd);background:var(--bg);color:var(--tx);border-radius:8px;cursor:pointer;font:inherit;position:relative;padding:0}
+.cal button.thu{background:var(--soft)}.cal button.sel{outline:2px solid var(--pr)}.cal button.td{border-color:var(--pr);font-weight:700}
+.cal i{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);font-size:9px;font-style:normal;color:var(--ok)}
+.cal em{position:absolute;top:1px;right:3px;font-size:10px;font-style:normal}
+.bar{height:8px;background:var(--bd);border-radius:6px;overflow:hidden}.bar div{height:100%;background:var(--pr)}
+.tag{display:inline-block;background:var(--soft);color:var(--pr);border-radius:10px;padding:0 8px;font-size:12px}
+.item{border-bottom:1px solid var(--bd);padding:8px 0;display:flex;gap:8px;justify-content:space-between;align-items:flex-start}
+svg text{fill:var(--mu);font-size:10px}
+</style>
+</head>
+<body>
+<header><h1>📘 SAT Tracker</h1><nav id="nav"></nav></header>
+<main id="app"></main>
+<script>
+const K='satTracker';let S=null;
+try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
+if(!S)S={daily:[],tutor:[],vocab:[],notes:[],goal:'',exams:[
+{id:'e1',name:'Thi thử tháng 7',type:'Thi thử',past:true},{id:'e2',name:'Thi thử tháng 10',type:'Thi thử',past:true},
+{id:'e3',name:'Thi thử tháng 11',type:'Thi thử'},{id:'e4',name:'Thi thử tháng 2',type:'Thi thử'},
+{id:'e5',name:'Thi thử tháng 4',type:'Thi thử'},{id:'e6',name:'Thi thử tháng 5',type:'Thi thử'}].map(e=>({date:'',target:'',score:'',rw:'',math:'',...e}))};
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+const uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const iso=d=>new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
+const today=()=>iso(new Date());
+const g=i=>document.getElementById(i);
+const num=v=>v===''||v==null?null:+v;
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+S.exams.forEach(e=>{if(e.id=='e1'||e.id=='e2'){e.past=true;e.type='Thi thử';e.name=e.name.replace('Thi thật','Thi thử')}});
+if(!S.goal)S.goal='1500';
+function autoLadder(){const sc=S.exams.filter(e=>num(e.score)!=null),base=sc.length?+sc[sc.length-1].score:1250,goal=+S.goal||1500,r=S.exams.filter(e=>!e.past&&num(e.score)==null);r.forEach((e,i)=>e.target=String(Math.round((base+(goal-base)*(i+1)/r.length)/10)*10));save()}
+if(!S.ladderDone){if(!S.exams.some(e=>e.target))autoLadder();S.ladderDone=1;save()}
+let tab='home',sel=today(),cm=new Date();cm.setDate(1);let T=[];let q='',vf='';
+let AS=null,TF=[];
+if(window.claude&&claude.use)claude.use('assets').then(a=>{AS=a;if(tab=='tutor')rr()}).catch(()=>{});
+const fh=(l,ed)=>l.map((f,i)=>`<div class="item"><a href="${esc(f.url)}" target="_blank" rel="noopener">${/^image\//.test(f.type)?`<img src="${esc(f.url)}" alt="" style="height:44px;border-radius:6px;vertical-align:middle;margin-right:8px">`:'📄 '}${esc(f.name)}</a>${ed?`<button class="x" onclick="rmF(${i})">✕</button>`:''}</div>`).join('');
+function rr(){const d=g('td'),m=g('tm'),v=d?[d.value,m.value]:null;render();if(v&&g('td')){g('td').value=v[0];g('tm').value=v[1]}}
+async function upF(inp){for(const f of inp.files){try{const r=await AS.upload(f);TF.push({id:r.id,url:r.url,name:f.name,type:f.type})}catch(e){alert('Không tải được "'+f.name+'". Chỉ hỗ trợ ảnh, PDF, văn bản/CSV, tối đa 20MB.')}}inp.value='';rr()}
+function rmF(i){const f=TF.splice(i,1)[0];try{AS&&AS.delete(f.id)}catch(e){}rr()}
+const TABS=[['home','🏠 Tổng quan'],['daily','✍️ Luyện hàng ngày'],['tutor','🧑‍🏫 Học thêm T5'],['exams','🎯 Thi & mục tiêu'],['vocab','🔤 Từ vựng'],['notes','📌 Ghi chú']];
+function go(t){tab=t;render()}
+function line(pts,labels,o={}){ // pts: [{y,y2}]
+  const W=420,H=170,p=28,n=pts.length;if(!n)return '<p class="mu">Chưa có dữ liệu.</p>';
+  const all=pts.flatMap(a=>[a.y,a.y2]).filter(v=>v!=null);let mn=o.min??Math.min(...all),mx=o.max??Math.max(...all);if(mn===mx){mn-=1;mx+=1}
+  const X=i=>p+(n===1?(W-2*p)/2:i*(W-2*p)/(n-1)),Y=v=>H-p-(v-mn)/(mx-mn)*(H-2*p);
+  const path=k=>{const s=pts.map((a,i)=>a[k]==null?null:[X(i),Y(a[k])]).filter(Boolean);return s.length?`<polyline fill="none" stroke="${k=='y'?'var(--pr)':'var(--wa)'}" stroke-width="2" ${k=='y2'?'stroke-dasharray="5 4"':''} points="${s.map(c=>c.join(',')).join(' ')}"/>`+s.map(c=>`<circle cx="${c[0]}" cy="${c[1]}" r="3.5" fill="${k=='y'?'var(--pr)':'var(--wa)'}"/>`).join(''):''};
+  return `<div class="scroll"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:300px"><line x1="${p}" y1="${H-p}" x2="${W-p}" y2="${H-p}" stroke="var(--bd)"/><text x="2" y="${Y(mx)+4}">${Math.round(mx)}</text><text x="2" y="${Y(mn)+4}">${Math.round(mn)}</text>${path('y2')}${path('y')}${labels.map((l,i)=>`<text x="${X(i)}" y="${H-10}" text-anchor="middle">${esc(l)}</text>`).join('')}</svg></div>`;
+}
+function stats(){
+  const t=S.daily.reduce((a,d)=>a+d.total,0),c=S.daily.reduce((a,d)=>a+d.correct,0);
+  const sec=k=>{const l=S.daily.filter(d=>d.section==k);return pct(l.reduce((a,d)=>a+d.correct,0),l.reduce((a,d)=>a+d.total,0))};
+  const days=new Set(S.daily.map(d=>d.date));let st=0,d=new Date();if(!days.has(iso(d)))d.setDate(d.getDate()-1);
+  while(days.has(iso(d))){st++;d.setDate(d.getDate()-1)}
+  const w=new Date();w.setDate(w.getDate()-6);const wk=S.daily.filter(x=>x.date>=iso(w)).reduce((a,x)=>a+x.total,0);
+  return{t,c,acc:pct(c,t),rw:sec('RW'),m:sec('Math'),st,wk};
+}
+function calendar(){
+  const y=cm.getFullYear(),m=cm.getMonth(),first=(cm.getDay()+6)%7,n=new Date(y,m+1,0).getDate();
+  let h=['T2','T3','T4','T5','T6','T7','CN'].map(x=>`<div class="h">${x}</div>`).join('')+'<div></div>'.repeat(first);
+  for(let d=1;d<=n;d++){const dt=iso(new Date(y,m,d)),dow=(first+d-1)%7,qs=S.daily.filter(x=>x.date==dt).reduce((a,x)=>a+x.total,0),ex=S.exams.some(e=>e.date==dt),tu=S.tutor.some(x=>x.date==dt);
+    h+=`<button class="${dow==3?'thu':''} ${dt==sel?'sel':''} ${dt==today()?'td':''}" onclick="sel='${dt}';render()">${d}${ex?'<em>🎯</em>':tu?'<em>🧑‍🏫</em>':''}${qs?`<i>${qs}</i>`:''}</button>`}
+  return `<div class="row" style="align-items:center"><button class="btn g" style="flex:0" onclick="cm.setMonth(cm.getMonth()-1);render()">‹</button><b style="text-align:center">Tháng ${m+1}/${y}</b><button class="btn g" style="flex:0" onclick="cm.setMonth(cm.getMonth()+1);render()">›</button></div><div class="cal">${h}</div><p class="mu">Ô tím nhạt = thứ 5 (học thêm). Số xanh = số câu làm trong ngày. 🎯 = ngày thi.</p>`;
+}
+function dayPanel(){
+  const ds=S.daily.filter(x=>x.date==sel),tu=S.tutor.filter(x=>x.date==sel),vo=S.vocab.filter(x=>x.date==sel),ex=S.exams.filter(e=>e.date==sel),nt=S.notes.length;
+  let h=`<h2>Ngày ${sel.split('-').reverse().join('/')}</h2>`;
+  if(ex.length)h+=ex.map(e=>`<p>🎯 <b>${esc(e.name)}</b> — mục tiêu ${e.target||'?'}, điểm ${e.score||'chưa có'}</p>`).join('');
+  h+=ds.length?`<table><tr><th>Phần</th><th>Nguồn</th><th>Đúng/Tổng</th></tr>${ds.map(x=>`<tr><td>${x.section}</td><td>${esc(x.source)}</td><td>${x.correct}/${x.total} (${pct(x.correct,x.total)}%)</td></tr>`).join('')}</table>`:'<p class="mu">Chưa có bài luyện nào.</p>';
+  h+=tu.map(x=>`<p>🧑‍🏫 <b>Học thêm:</b> ${esc(x.materials)}<br>${x.scores.map(s=>`${esc(s.name)}: ${s.score}/${s.max}`).join(' · ')}</p>`).join('');
+  if(vo.length)h+=`<p>🔤 ${vo.length} từ mới: ${vo.map(v=>esc(v.word)).join(', ')}</p>`;
+  return h+`<button class="btn" onclick="go('daily')">+ Thêm bài luyện</button>`;
+}
+function home(){
+  const s=stats();
+  const byDay={};S.daily.forEach(d=>{(byDay[d.date]??={t:0,c:0});byDay[d.date].t+=d.total;byDay[d.date].c+=d.correct});
+  const ks=Object.keys(byDay).sort().slice(-14);
+  const trend=line(ks.map(k=>({y:pct(byDay[k].c,byDay[k].t)})),ks.map(k=>k.slice(8)+'/'+k.slice(5,7)),{min:0,max:100});
+  const sc=S.exams.filter(e=>num(e.score)!=null||num(e.target)!=null);
+  const next=S.exams.find(e=>!e.past&&num(e.score)==null);
+  const last=[...S.exams].reverse().find(e=>num(e.score)!=null);
+  let goal='<p class="mu">Vào tab “Thi & mục tiêu” để nhập điểm và đặt mục tiêu.</p>';
+  if(next){const tg=num(next.target)??num(S.goal),ls=last?+last.score:null;
+    goal=`<p><b>${esc(next.name)}</b>${next.date?` · ${next.date}`:''}</p><p>Mục tiêu: <b>${tg??'chưa đặt'}</b>${ls!=null?` · Điểm gần nhất: <b>${ls}</b>`:''}</p>`+
+    (tg!=null&&ls!=null?`<div class="bar"><div style="width:${Math.min(100,pct(ls,tg))}%"></div></div><p class="mu">${tg>ls?`Cần tăng thêm <b>${tg-ls}</b> điểm. Gợi ý: luyện đều mỗi ngày, ưu tiên phần có % đúng thấp hơn (${s.rw<s.m?'Reading & Writing':'Math'}).`:'Bạn đã đạt/vượt mục tiêu này rồi 🎉 — hãy nâng mục tiêu lên!'}</p>`:'');}
+  return `<div class="stats"><div class="stat"><b>${s.t}</b><span>Tổng câu đã làm</span></div><div class="stat"><b class="ok">${s.c}</b><span>Câu đúng</span></div><div class="stat"><b class="no">${s.t-s.c}</b><span>Câu sai</span></div><div class="stat"><b>${s.acc}%</b><span>Tỉ lệ đúng</span></div><div class="stat"><b>${s.st} 🔥</b><span>Chuỗi ngày liên tiếp</span></div><div class="stat"><b>${s.wk}</b><span>Câu trong 7 ngày</span></div></div>
+  <div class="grid"><div class="card">${calendar()}</div><div class="card">${dayPanel()}</div></div>
+  <div class="grid"><div class="card"><h2>Mục tiêu lần thi tiếp theo</h2>${goal}<p class="mu">🎓 Mục tiêu cuối: <b>${S.goal}</b> — học bổng du học Úc / Singapore</p></div><div class="card"><h2>Tỉ lệ đúng theo phần</h2><p>Reading & Writing: <b>${s.rw}%</b></p><div class="bar"><div style="width:${s.rw}%"></div></div><p>Math: <b>${s.m}%</b></p><div class="bar"><div style="width:${s.m}%"></div></div></div></div>
+  <div class="grid"><div class="card"><h2>% đúng theo ngày (14 ngày gần nhất)</h2>${trend}</div><div class="card"><h2>Điểm các kỳ thi (xanh) vs mục tiêu (cam)</h2>${line(sc.map(e=>({y:num(e.score),y2:num(e.target)})),sc.map(e=>e.name.replace('Thi ','').replace('thật','T').replace('thử','t').replace('tháng ','')))}</div></div>`;
+}
+function daily(){
+  const rows=[...S.daily].sort((a,b)=>b.date.localeCompare(a.date));
+  return `<div class="card"><h2>Ghi bài luyện SAT</h2><div class="row"><input type="date" id="dd" value="${sel}"><select id="ds"><option value="RW">Reading & Writing</option><option value="Math">Math</option></select><input id="dsrc" placeholder="Nguồn (Bluebook, Khan, sách...)"></div><div class="row"><input type="number" id="dt" min="1" placeholder="Tổng số câu"><input type="number" id="dc" min="0" placeholder="Số câu đúng"><button class="btn" onclick="addDaily()">Lưu</button></div><p class="mu">Số câu sai sẽ tự tính = tổng − đúng.</p></div>
+  <div class="card scroll"><h2>Lịch sử (${rows.length})</h2><table><tr><th>Ngày</th><th>Phần</th><th>Nguồn</th><th>Đúng</th><th>Sai</th><th>%</th><th></th></tr>${rows.map(d=>`<tr><td>${d.date}</td><td>${d.section}</td><td>${esc(d.source)}</td><td class="ok">${d.correct}</td><td class="no">${d.total-d.correct}</td><td>${pct(d.correct,d.total)}%</td><td><button class="x" onclick="del('daily','${d.id}')">✕</button></td></tr>`).join('')||'<tr><td colspan=7 class="mu">Chưa có dữ liệu</td></tr>'}</table></div>`;
+}
+function addDaily(){const t=+g('dt').value,c=+g('dc').value;if(!t||c>t||c<0)return alert('Kiểm tra lại số câu (đúng không được lớn hơn tổng).');
+  S.daily.push({id:uid(),date:g('dd').value||today(),section:g('ds').value,source:g('dsrc').value,total:t,correct:c});sel=g('dd').value;save();render()}
+function del(k,i){S[k]=S[k].filter(x=>x.id!=i);save();render()}
+function tutor(){
+  const rows=[...S.tutor].sort((a,b)=>b.date.localeCompare(a.date));
+  return `<div class="card"><h2>Buổi học thêm thứ 5</h2><div class="row"><input type="date" id="td" value="${sel}"></div><textarea id="tm" placeholder="Ghi chú tài liệu (tên sách, đề, link...)"></textarea>${AS?`<div class="row"><input type="file" multiple onchange="upF(this)"></div><p class="mu">Hỗ trợ ảnh, PDF, văn bản/CSV (tối đa 20MB/file). File Word/PowerPoint hãy chuyển sang PDF trước.</p>`:'<p class="mu">Tải file chỉ dùng được khi bạn mở trang bằng tài khoản chủ sở hữu (đã đăng nhập).</p>'}${fh(TF,true)}
+  <h2 style="margin-top:10px">Điểm từng bài</h2><div class="row"><input id="tn" placeholder="Tên bài"><input type="number" id="ts" placeholder="Điểm"><input type="number" id="tx" placeholder="Tối đa"><button class="btn g" onclick="addT()">+ Thêm bài</button></div>
+  ${T.map((s,i)=>`<div class="item"><span>${esc(s.name)}: <b>${s.score}/${s.max}</b></span><button class="x" onclick="T.splice(${i},1);render()">✕</button></div>`).join('')}
+  <p><button class="btn" onclick="saveT()">Lưu buổi học</button></p></div>
+  ${rows.map(x=>{const a=x.scores.reduce((s,y)=>s+y.score,0),b=x.scores.reduce((s,y)=>s+y.max,0);return `<div class="card"><div class="item" style="border:0"><b>${x.date}</b><button class="x" onclick="del('tutor','${x.id}')">✕</button></div><p class="mu">Tài liệu: ${esc(x.materials)||'—'}</p>${fh(x.files||[],false)}${x.scores.map(s=>`<div class="item"><span>${esc(s.name)}</span><span>${s.score}/${s.max} (${pct(s.score,s.max)}%)</span></div>`).join('')}${b?`<p><b>Tổng: ${a}/${b} (${pct(a,b)}%)</b></p>`:''}</div>`}).join('')}`;
+}
+function addT(){const n=g('tn').value,s=+g('ts').value,m=+g('tx').value;if(!n||!m)return alert('Nhập tên bài và điểm tối đa.');
+  const keep={d:g('td').value,m:g('tm').value};T.push({name:n,score:s,max:m});render();g('td').value=keep.d;g('tm').value=keep.m}
+function saveT(){if(!T.length&&!TF.length&&!g('tm').value)return;S.tutor.push({id:uid(),date:g('td').value||today(),materials:g('tm').value,scores:T,files:TF});T=[];TF=[];save();render()}
+function exams(){
+  const f=(e,k,ph)=>`<input type="number" value="${e[k]??''}" placeholder="${ph}" onchange="upd('${e.id}','${k}',this.value)">`;
+  return `<div class="card"><h2>🎓 Mục tiêu học bổng Úc / Singapore</h2><span class="mu">Điểm SAT mục tiêu cuối (400–1600)</span><input type="number" value="${S.goal}" onchange="S.goal=this.value;save()"><p><button class="btn" onclick="autoLadder();render()">⚡ Tự chia lộ trình mục tiêu cho các kỳ thi thử còn lại</button></p><p class="mu">Lộ trình chia đều từ điểm thi thử gần nhất (hoặc 1250 nếu chưa nhập điểm) đến mục tiêu cuối. Nhập điểm T7, T10 rồi bấm lại để cập nhật.</p><div class="scroll"><table><tr><th>Trường</th><th>Mức SAT tham khảo</th></tr><tr><td>ANU, Sydney, Melbourne, Monash, UQ (Úc)</td><td>~1200–1300 để được xét</td></tr><tr><td>NTU (Singapore)</td><td>sàn ~1250; nhóm trúng ~1300+</td></tr><tr><td>NUS (Singapore)</td><td>nhóm giữa 50% ~1250–1520 (một số nguồn: 1450+)</td></tr><tr><td><b>Cạnh tranh học bổng</b></td><td><b>nên nhắm 1500+</b></td></tr></table></div><p class="mu">Số liệu lấy từ các trang tổng hợp, chỉ để tham khảo, có thể lệch. Hãy kiểm tra website tuyển sinh chính thức của từng trường. Học bổng thường xét thêm học bạ, IELTS và hoạt động ngoại khóa, không chỉ SAT.</p></div>
+  ${S.exams.map(e=>`<div class="card"><div class="item" style="border:0;padding:0"><b>${esc(e.name)}</b><span class="tag">${e.type}${e.past?' · đã diễn ra':''}</span></div><div class="row" style="margin-top:8px"><div><span class="mu">Ngày</span><input type="date" value="${e.date}" onchange="upd('${e.id}','date',this.value)"></div><div><span class="mu">Mục tiêu</span>${f(e,'target','Mục tiêu')}</div><div><span class="mu">Điểm tổng</span>${f(e,'score','Điểm')}</div><div><span class="mu">R&W</span>${f(e,'rw','R&W')}</div><div><span class="mu">Math</span>${f(e,'math','Math')}</div></div>${num(e.score)!=null&&num(e.target)!=null?`<p class="${+e.score>=+e.target?'ok':'no'}">${+e.score>=+e.target?'✓ Đạt mục tiêu':'Còn thiếu '+(e.target-e.score)+' điểm'}</p>`:''}</div>`).join('')}
+  <div class="card"><h2>Thêm kỳ thi khác</h2><div class="row"><input id="en" placeholder="Tên kỳ thi"><select id="et"><option>Thi thật</option><option>Thi thử</option></select><button class="btn" onclick="addE()">Thêm</button></div></div>`;
+}
+function upd(i,k,v){S.exams.find(e=>e.id==i)[k]=v;save();render()}
+function addE(){const n=g('en').value;if(!n)return;S.exams.push({id:uid(),name:n,type:g('et').value,date:'',target:'',score:'',rw:'',math:''});save();render()}
+function vocab(){
+  const ds=[...new Set(S.vocab.map(v=>v.date))].sort().reverse();
+  const l=S.vocab.filter(v=>(!vf||v.date==vf)&&(!q||(v.word+v.meaning).toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>b.date.localeCompare(a.date));
+  return `<div class="card"><h2>Từ mới</h2><div class="row"><input type="date" id="vd" value="${sel}"><input id="vw" placeholder="Từ (tiếng Anh)"><input id="vm" placeholder="Nghĩa"></div><div class="row"><input id="ve" placeholder="Ví dụ / ngữ cảnh (không bắt buộc)"><button class="btn" onclick="addV()">Lưu từ</button></div></div>
+  <div class="card"><div class="row"><input placeholder="🔍 Tìm từ..." value="${esc(q)}" oninput="q=this.value;renderList()"><select onchange="vf=this.value;render()"><option value="">Tất cả buổi (${S.vocab.length} từ)</option>${ds.map(d=>`<option value="${d}" ${d==vf?'selected':''}>${d} (${S.vocab.filter(v=>v.date==d).length})</option>`).join('')}</select></div><div id="vl">${vlist(l)}</div></div>`;
+}
+const vlist=l=>l.map(v=>`<div class="item"><div><b>${esc(v.word)}</b> — ${esc(v.meaning)}<br><span class="mu">${esc(v.example)} · ${v.date}</span></div><button class="x" onclick="del('vocab','${v.id}')">✕</button></div>`).join('')||'<p class="mu">Chưa có từ nào.</p>';
+function renderList(){g('vl').innerHTML=vlist(S.vocab.filter(v=>(!vf||v.date==vf)&&(!q||(v.word+v.meaning).toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>b.date.localeCompare(a.date)))}
+function addV(){const w=g('vw').value.trim();if(!w)return;S.vocab.push({id:uid(),date:g('vd').value||today(),word:w,meaning:g('vm').value,example:g('ve').value});save();render()}
+function notes(){
+  const l=[...S.notes].sort((a,b)=>(b.pin?1:0)-(a.pin?1:0));
+  return `<div class="card"><h2>Ghi chú cần nhớ</h2><div class="row"><select id="nt"><option>Ngữ pháp</option><option>Toán – công thức</option><option>Lỗi hay sai</option><option>Chiến thuật</option><option>Khác</option></select></div><textarea id="nx" placeholder="Nội dung cần nhớ..."></textarea><p><button class="btn" onclick="addN()">Lưu ghi chú</button></p></div>
+  <div class="card">${l.map(n=>`<div class="item"><div><span class="tag">${esc(n.tag)}</span> ${n.pin?'📌':''}<br>${esc(n.text).replace(/\n/g,'<br>')}</div><div><button class="x" style="color:var(--pr)" onclick="pin('${n.id}')">📌</button><button class="x" onclick="del('notes','${n.id}')">✕</button></div></div>`).join('')||'<p class="mu">Chưa có ghi chú.</p>'}</div>`;
+}
+function addN(){const t=g('nx').value.trim();if(!t)return;S.notes.push({id:uid(),tag:g('nt').value,text:t,pin:false});save();render()}
+function pin(i){const n=S.notes.find(x=>x.id==i);n.pin=!n.pin;save();render()}
+function render(){
+  g('nav').innerHTML=TABS.map(([k,l])=>`<button class="${k==tab?'on':''}" onclick="go('${k}')">${l}</button>`).join('');
+  g('app').innerHTML={home,daily,tutor,exams,vocab,notes}[tab]();
+}
+render();
+</script>
+</body>
+</html>
